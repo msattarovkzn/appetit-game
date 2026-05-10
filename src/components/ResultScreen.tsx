@@ -141,10 +141,12 @@ export function ResultScreen({ result, onPlayAgain }: Props) {
           {copied ? '✅ Скопировано!' : '📋 Скопировать промокод'}
         </button>
 
-        <button className="btn btn-green" onClick={handleOrder}
-          style={{ width: '100%', fontSize: 18, borderRadius: 13 }}>
+        <a href={ORDER_URL} target="_blank" rel="noopener noreferrer"
+          onClick={recordOrderClick}
+          className="btn btn-green"
+          style={{ width: '100%', fontSize: 18, borderRadius: 13, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           🍕 Сделать заказ
-        </button>
+        </a>
 
         <button className="btn btn-secondary" onClick={onPlayAgain}
           style={{ width: '100%', fontSize: 16, borderRadius: 13 }}>
