@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { GameResult, Reward } from '../types/game';
-import { getReward, getRewardColor, getRewardLabel } from '../utils/rewards';
-import { recordGame, recordReward, recordOrderClick, getStats } from '../utils/analytics';
+import { GameResult } from '../types/game';
+import { getEarnedReward, RankReward } from '../config/rankConfig';
+import { recordGame, recordOrderClick, getStats } from '../utils/analytics';
 import { ORDER_URL } from '../config/gameConfig';
 
 interface Props {
@@ -10,17 +10,14 @@ interface Props {
 }
 
 export function ResultScreen({ result, onPlayAgain }: Props) {
-  const [reward, setReward] = useState<Reward | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [copied,   setCopied]   = useState(false);
   const [revealed, setRevealed] = useState(false);
-  const stats = getStats();
+  const stats  = getStats();
+  const reward: RankReward | null = getEarnedReward(result.level);
 
   useEffect(() => {
     recordGame(result.score, result.maxCombo);
-    const r = getReward(result.score);
-    setReward(r);
-    recordReward();
-    setTimeout(() => setRevealed(true), 500);
+    setTimeout(() => setRevealed(true), 400);
   }, []);
 
   const copyPromo = () => {
@@ -31,14 +28,13 @@ export function ResultScreen({ result, onPlayAgain }: Props) {
     });
   };
 
-  const handleOrder = () => {
-    recordOrderClick();
-    window.open(ORDER_URL, '_blank');
-  };
+  const rColor = reward?.color ?? '#aaa';
+  const rGlow  = reward?.glowColor ?? '#aaa';
 
-  const rColor = reward ? getRewardColor(reward.type) : '#aaa';
-  const rLabel = reward ? getRewardLabel(reward.type) : '';
-  const isLeg  = reward?.type === 'legendary';
+  // Показываем нужную панель из images/levels-rewards.png
+  // Картинка: 3 панели рядом → панель 0 слева, 1 по центру, 2 справа
+  // Контейнер 200px, картинка 600px (300%) → смещение: 0%, -100%, -200%
+  const offsetX = reward ? ['0%', '-100%', '-200%'][reward.panelIndex] : '0%';
 
   return (
     <div className="screen fade-in" style={{
@@ -47,7 +43,7 @@ export function ResultScreen({ result, onPlayAgain }: Props) {
     }}>
       <div style={{ width: '100%', maxWidth: 380, display: 'flex', flexDirection: 'column', gap: 12 }}>
 
-        {/* Header */}
+        {/* Заголовок */}
         <div style={{
           textAlign: 'center',
           background: 'linear-gradient(135deg, #1a1a3a, #222240)',
@@ -63,21 +59,20 @@ export function ResultScreen({ result, onPlayAgain }: Props) {
           </div>
         </div>
 
-        {/* Score row */}
+        {/* Очки */}
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Очки</div>
-          <div style={{ fontSize: 52, fontWeight: 900, color: '#ffd700', lineHeight: 1.1,
-            textShadow: '0 0 20px rgba(255,215,0,0.5)' }}>
+          <div style={{ fontSize: 52, fontWeight: 900, color: '#ffd700', lineHeight: 1.1, textShadow: '0 0 20px rgba(255,215,0,0.5)' }}>
             {result.score}
           </div>
         </div>
 
-        {/* Stats row */}
+        {/* Статы */}
         <div style={{ display: 'flex', gap: 8 }}>
           {[
-            { label: 'Уровень', value: result.level, color: '#69f0ae' },
-            { label: 'Макс. комбо', value: result.maxCombo, color: '#ffd740' },
-            { label: 'Лучший счёт', value: stats.bestScore, color: '#ce93d8' },
+            { label: 'Уровень',     value: result.level,        color: '#69f0ae' },
+            { label: 'Макс. комбо', value: result.maxCombo,     color: '#ffd740' },
+            { label: 'Рекорд',      value: stats.bestScore,     color: '#ce93d8' },
           ].map(s => (
             <div key={s.label} style={{
               flex: 1, textAlign: 'center',
@@ -90,56 +85,74 @@ export function ResultScreen({ result, onPlayAgain }: Props) {
           ))}
         </div>
 
-        {/* Reward box */}
+        {/* Блок награды */}
         <div style={{
           background: 'rgba(0,0,0,0.5)',
           border: `2px solid ${rColor}`,
           borderRadius: 16, padding: '16px',
           textAlign: 'center',
-          boxShadow: revealed ? `0 0 28px ${rColor}55` : 'none',
+          boxShadow: revealed ? `0 0 32px ${rGlow}55` : 'none',
           transition: 'box-shadow 0.6s ease',
           position: 'relative', overflow: 'hidden',
         }}>
-          {isLeg && revealed && (
-            <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at 50% 50%, rgba(255,215,0,0.12) 0%, transparent 70%)', pointerEvents: 'none' }} />
-          )}
-
-          <div style={{ fontSize: 11, fontWeight: 800, color: rColor, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>
+          <div style={{ fontSize: 11, fontWeight: 800, color: rColor, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>
             Твоя награда
           </div>
 
           {revealed && reward ? (
             <>
-              <div style={{ fontSize: 52, lineHeight: 1,
-                filter: isLeg ? `drop-shadow(0 0 16px ${rColor})` : undefined }}>
-                {reward.emoji}
+              {/* Картинка — нужная панель из levels-rewards.png */}
+              <div style={{ width: 200, height: 140, overflow: 'hidden', borderRadius: 12, margin: '0 auto 10px', border: `2px solid ${rColor}`, boxShadow: `0 0 20px ${rGlow}66` }}>
+                <img
+                  src="/levels-rewards.png"
+                  alt={reward.title}
+                  style={{ width: '300%', height: '100%', objectFit: 'cover', marginLeft: offsetX }}
+                />
               </div>
-              <div style={{ fontWeight: 900, fontSize: 17, marginTop: 8 }}>{reward.name}</div>
-              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)', marginTop: 3 }}>{reward.description}</div>
+
+              <div style={{ fontWeight: 900, fontSize: 17, color: rColor, textShadow: `0 0 10px ${rGlow}` }}>
+                {reward.title}
+              </div>
+              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', marginTop: 4 }}>
+                {reward.description}
+              </div>
               {reward.minOrder > 0 && (
-                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>при заказе от {reward.minOrder} ₽</div>
+                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>
+                  при заказе от {reward.minOrder} ₽
+                </div>
               )}
 
-              {/* Promo */}
+              {/* Промокод */}
               <div style={{ marginTop: 12 }}>
                 <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 }}>Промокод</div>
-                <div style={{ fontSize: 26, fontWeight: 900, letterSpacing: 2, color: rColor,
-                  textShadow: `0 0 12px ${rColor}` }}>
+                <div style={{ fontSize: 26, fontWeight: 900, letterSpacing: 2, color: rColor, textShadow: `0 0 14px ${rGlow}` }}>
                   {reward.promoCode}
                 </div>
               </div>
             </>
+          ) : revealed && !reward ? (
+            // Уровень < 5 — нет награды
+            <div style={{ padding: '12px 0' }}>
+              <div style={{ fontSize: 44 }}>🛵</div>
+              <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)', marginTop: 8 }}>
+                Доберись до уровня 5, чтобы получить награду!
+              </div>
+              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', marginTop: 4 }}>
+                Уровень 5 · 13 · 20 — особые призы
+              </div>
+            </div>
           ) : (
             <div style={{ fontSize: 44, padding: '16px 0' }}>🎁</div>
           )}
         </div>
 
-        {/* Buttons */}
-        <button className="btn" onClick={copyPromo}
-          style={{ width: '100%', fontSize: 16, borderRadius: 13,
-            background: 'rgba(255,255,255,0.1)', border: '2px solid rgba(255,255,255,0.2)', color: '#fff' }}>
-          {copied ? '✅ Скопировано!' : '📋 Скопировать промокод'}
-        </button>
+        {/* Кнопки */}
+        {reward && (
+          <button className="btn" onClick={copyPromo}
+            style={{ width: '100%', fontSize: 16, borderRadius: 13, background: 'rgba(255,255,255,0.1)', border: '2px solid rgba(255,255,255,0.2)', color: '#fff' }}>
+            {copied ? '✅ Скопировано!' : '📋 Скопировать промокод'}
+          </button>
+        )}
 
         <a href={ORDER_URL} target="_blank" rel="noopener noreferrer"
           onClick={recordOrderClick}
@@ -153,15 +166,12 @@ export function ResultScreen({ result, onPlayAgain }: Props) {
           🔄 Играть ещё
         </button>
 
-        {/* Mini stats */}
-        <div style={{
-          display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6,
-          background: 'rgba(255,255,255,0.04)', borderRadius: 12, padding: '10px',
-        }}>
+        {/* Мини-статистика */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, background: 'rgba(255,255,255,0.04)', borderRadius: 12, padding: '10px' }}>
           {[
-            { label: 'Игр', value: stats.gamesPlayed },
+            { label: 'Игр',          value: stats.gamesPlayed },
             { label: 'Средний счёт', value: Math.round(stats.totalScore / Math.max(stats.gamesPlayed, 1)) },
-            { label: 'Наград', value: stats.rewardsGiven },
+            { label: 'Наград',       value: stats.rewardsGiven },
           ].map(s => (
             <div key={s.label} style={{ textAlign: 'center' }}>
               <div style={{ fontWeight: 900, fontSize: 17 }}>{s.value}</div>
@@ -169,6 +179,7 @@ export function ResultScreen({ result, onPlayAgain }: Props) {
             </div>
           ))}
         </div>
+
       </div>
     </div>
   );
