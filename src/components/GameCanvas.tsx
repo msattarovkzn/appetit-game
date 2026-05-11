@@ -511,13 +511,6 @@ export function GameCanvas({ onGameEnd, courierType }: Props) {
       } catch { courierCanvas.current = null; }
     };
 
-    // Звук мотора
-    try {
-      const engine = new Audio('/sounds/engine.mp3');
-      engine.loop = true; engine.volume = 0.15;
-      engineRef.current = engine;
-      engine.play().catch(() => {});
-    } catch {}
 
     // Звук хорошего объекта
     try {
